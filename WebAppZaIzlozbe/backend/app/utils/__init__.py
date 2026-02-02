@@ -1,0 +1,3 @@
+"""
+Utils paket - pomoćne funkcije
+"""
