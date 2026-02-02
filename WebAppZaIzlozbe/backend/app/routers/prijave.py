@@ -6,9 +6,9 @@ from app.database import get_db
 from app.models.prijava import Prijava
 from app.models.izlozba import Izlozba
 from app.models.korisnik import Korisnik
-from app.schemas.prijava import PrijavaCreate, PrijavaUpdate, PrijavaResponse, PrijavaValidate
+from app.schemas.prijava import PrijavaCreate, PrijavaUpdate, PrijavaResponse
 from app.utils.dependencies import get_current_user_required, get_current_admin
-from app.services.qr_service import generate_qr_code, decode_qr_data
+from app.services.qr_service import generate_qr_code
 from app.services.email_service import send_registration_email
 
 router = APIRouter(prefix="/api/prijave", tags=["Prijave"])
@@ -19,7 +19,6 @@ async def list_prijave(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     id_izlozba: Optional[int] = None,
-    validirano: Optional[bool] = None,
     db: Session = Depends(get_db),
     current_user: Korisnik = Depends(get_current_admin)
 ):
@@ -28,8 +27,7 @@ async def list_prijave(
     if id_izlozba:
         query = query.filter(Prijava.id_izlozba == id_izlozba)
     
-    if validirano is not None:
-        query = query.filter(Prijava.validirano == validirano)
+
     
     prijave = query.order_by(Prijava.datum_registracije.desc()).offset(skip).limit(limit).all()
     return prijave
@@ -157,42 +155,7 @@ async def create_prijava(
     return db_prijava
 
 
-@router.post("/validate", response_model=PrijavaResponse)
-async def validate_prijava(
-    validation: PrijavaValidate,
-    db: Session = Depends(get_db),
-    current_user: Korisnik = Depends(get_current_admin)
-):
-    try:
-        qr_data = decode_qr_data(validation.qr_kod)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    
-    prijava = db.query(Prijava).options(
-        joinedload(Prijava.izlozba),
-        joinedload(Prijava.korisnik)
-    ).filter(Prijava.id_prijava == qr_data["prijava_id"]).first()
-    
-    if not prijava:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Prijava nije pronađena"
-        )
-    
-    if prijava.validirano:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Karta je već validirana"
-        )
-    
-    prijava.validirano = True
-    db.commit()
-    db.refresh(prijava)
-    
-    return prijava
+
 
 
 @router.delete("/{prijava_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -220,11 +183,7 @@ async def delete_prijava(
             detail="Nemate pravo da otkažete ovu prijavu"
         )
     
-    if prijava.validirano:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ne možete otkazati već validiranu prijavu"
-        )
+
     
     db.delete(prijava)
     db.commit()

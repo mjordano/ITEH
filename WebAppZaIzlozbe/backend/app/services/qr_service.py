@@ -53,15 +53,4 @@ def generate_qr_code(
     }
 
 
-def decode_qr_data(qr_data: str) -> Dict[str, Any]:
-    try:
-        data = json.loads(qr_data)
-        required_fields = ["prijava_id", "korisnik_id", "izlozba_id"]
-        
-        for field in required_fields:
-            if field not in data:
-                raise ValueError(f"Nedostaje polje: {field}")
-        
-        return data
-    except json.JSONDecodeError:
-        raise ValueError("Neispravan format QR koda")
+

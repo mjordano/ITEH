@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     
     # Art Institute of Chicago API
     ARTIC_API_BASE_URL: str = "https://api.artic.edu/api/v1"
+
+    # Email podešavanja
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = "your_email@gmail.com"
+    SMTP_PASSWORD: str = "your_app_password"
+    SMTP_FROM_EMAIL: str = "noreply@galerija.com"
     
     @property
     def cors_origins_list(self) -> List[str]:

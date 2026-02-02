@@ -27,11 +27,9 @@ def fetch_artic_artwork(query, limit=1):
             "limit": limit + 2,
             "page": 1
         }
-        # Timeout slightly increased for API calls
         response = httpx.get(url, params=params, timeout=15.0)
         response.raise_for_status()
         data = response.json()
-        # Filter items with image_id
         results = [art for art in data.get('data', []) if art.get('image_id')]
         return results[:limit]
     except Exception as e:
@@ -142,31 +140,20 @@ def seed_database():
         
         print("Preuzimanje slika sa Artic API...")
         
-        # Upiti koji odgovaraju temama izložbi redom (korišćeni indeksi 0-6)
-        # 0: Industrijsko/American -> "Grant Wood"
-        # 1: Impresionizam -> "Seurat"
-        # 2: Realizam -> "Edward Hopper"
-        # 3: Van Gogh -> "Van Gogh"
-        # 4: Apstraktno -> "Kandinsky"
-        # 5: Nadrealizam -> "Salvador Dali"
-        # 6: Fotografija -> "landscape" ili "photography"
-        
         queries = [
-            "Grant Wood",    # za index 0
-            "Seurat",        # za index 1
-            "Edward Hopper", # za index 2
-            "Van Gogh",      # za index 3
-            "Kandinsky",     # za index 4
-            "Salvador Dali", # za index 5
-            "landscape"      # za index 6
+            "Grant Wood",
+            "Seurat",
+            "Edward Hopper", 
+            "Van Gogh",      
+            "Kandinsky",     
+            "Salvador Dali", 
+            "landscape"      
         ]
         
         slike = []
         
-        # Helper za kreiranje Slika objekta
         def create_slika_obj(art_data, order, istaknuta=False, naslovna=False):
             if not art_data:
-                # Fallback ako API ne vrati ništa
                 return Slika(
                     slika="https://images.unsplash.com/photo-1547826039-bfc35e0f1ea8?auto=format&fit=crop&q=80&w=1000",
                     thumbnail="https://images.unsplash.com/photo-1547826039-bfc35e0f1ea8?auto=format&fit=crop&q=80&w=400",
@@ -182,10 +169,8 @@ def seed_database():
             desc = art_data.get('description') or art_data.get('short_description') or "Umetničko delo iz Artic kolekcije."
             clean_desc = clean_html(desc)
             
-            # Skrati naslov i fotografa ako su predugački
             naslov = art_data.get('title', 'Bez naslova')[:250]
             artist = art_data.get('artist_display', 'Nepoznat umetnik')
-            # Artist field is often "Grant Wood\nAmerican, 1891-1942". Take first line or truncate.
             artist = artist.split('\n')[0][:190]
 
             return Slika(
@@ -196,17 +181,13 @@ def seed_database():
                 fotograf=artist,
                 datum_otpremanja=datetime.utcnow(),
                 istaknuta=istaknuta,
-                naslovna=naslovna, # Biće overridovano kasnije ili postavljeno ovde
+                naslovna=naslovna,
                 redosled=order
             )
 
         for i, q in enumerate(queries):
             res = fetch_artic_artwork(q, 1)
             art_data = res[0] if res else None
-            # Logika iz starog fajla:
-            # Slike 0, 1, 2 su bile istaknute
-            # Slika 0 je bila naslovna? Original: slike[0].naslovna=True, slike[1].naslovna=False...
-            # Ali "naslovna" se koristi za homepage verovatno.
             
             slike.append(create_slika_obj(
                 art_data,
@@ -220,9 +201,6 @@ def seed_database():
         print(f"✓ Kreirano {len(slike)} osnovnih slika iz Artic API")
         
         today = date.today()
-        
-        # Kreiranje izložbi koristeći fetchovane slike
-        # Indeksi moraju da ostanu isti kao u originalu da bi odgovarali temama
         
         izlozbe = [
             Izlozba(
@@ -342,7 +320,6 @@ def seed_database():
         db.add_all(izlozbe)
         db.commit()
         
-        # Preuzimanje dodatnih slika za galeriju (random mix)
         print("Preuzimanje dodatnih slika za galerije...")
         extra_artworks = fetch_artic_artwork("artwork", 30)
         
@@ -350,7 +327,6 @@ def seed_database():
             print("Upozorenje: Nisu pronađene dodatne slike.")
         
         for i, izlo in enumerate(izlozbe):
-            # Odaberi 2 slike iz bazena za svaku izložbu
             if extra_artworks:
                 art1 = extra_artworks[(i * 2) % len(extra_artworks)]
                 art2 = extra_artworks[(i * 2 + 1) % len(extra_artworks)]
@@ -371,7 +347,6 @@ def seed_database():
                      id_izlozba=izlo.id_izlozba
                  )
             ]
-            # Set foreign key
             for ds in dodatne_slike:
                 ds.id_izlozba = izlo.id_izlozba
                 
